@@ -23,8 +23,7 @@ class Hero
     warrior.health < 10
   end
 
-  def in_next_cell
-    cell = warrior.feel(direction)
+  def cell_to_symbol cell
     if cell.empty?
       :nothing
     elsif cell.captive?
@@ -34,6 +33,19 @@ class Hero
     else
       :enemy
     end
+  end
+
+  def in_next_cell
+    cell_to_symbol warrior.feel(direction)
+  end
+
+  def first_see_enemy?
+    cells = warrior.look(direction)
+    cells.map do |cell|
+      cell_to_symbol cell
+    end.select do |cell|
+      cell == :enemy || cell == :captive
+    end.first == :enemy
   end
 
   def next_state
@@ -48,14 +60,19 @@ class Hero
       end
     end
 
+    if in_danger?
+      if under_attack?
+        return :retreat
+      else
+        return :rest
+      end
+    end
+
+
     case in_next_cell
     when :nothing
-      if in_danger?
-        if under_attack?
-          :retreat
-        else
-          :rest
-        end
+      if first_see_enemy?
+        :attack
       else
         :walk
       end
@@ -80,7 +97,7 @@ class Hero
         warrior.rest!
         done = true
       when :attack
-        warrior.attack!(direction)
+        warrior.shoot!(direction)
         done = true
       when :rescue
         warrior.rescue!(direction)
