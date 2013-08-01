@@ -4,7 +4,7 @@ class Hero
   def initialize
     @state = :go_to_start
     @last_health = 20
-    @direction = :backward
+    @direction = :forward
   end
 
   def other_direction
@@ -86,7 +86,8 @@ class Hero
         warrior.rescue!(direction)
         done = true
       when :turn_around_and_retry
-        @direction = :forward
+        warrior.pivot!
+        done = true
       end
       @state = new_state
     end
