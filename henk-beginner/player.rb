@@ -18,18 +18,19 @@ class Henk
   end
 
   def recover!
-    while warrior.health < 20
-      last_health = warrior.health
+    while warrior.health < 20 and not warrior.health_decreased?
       warrior.rest!
-      break if warrior.health < last_health
     end
   end
-
 
   attr_accessor :warrior
 end
 
 WarriorWrapper = Struct.new(:warrior) do
+  def initialize *args
+    super
+    @last_health = 20
+  end
   def feel
     warrior.feel
   end
@@ -38,25 +39,47 @@ WarriorWrapper = Struct.new(:warrior) do
   end
   def attack!
     warrior.attack!
-    Fiber.yield
+    yield_control
   end
   def rest!
     warrior.rest!
-    Fiber.yield
+    yield_control
   end
   def walk! *args
     warrior.walk! *args
+    yield_control
+  end
+
+  def yield_control
+    @last_health = warrior.health
     Fiber.yield
+  end
+
+  def health_decreased?
+    @health_decreased
+  end
+
+  def update warrior
+    @health_decreased = warrior.health < @last_health
+    self.warrior = warrior
   end
 end
 
 class Player
+  def setup
+    return if @setup_finished
+
+    @henk = Henk.new
+    @wrapper = WarriorWrapper.new
+    @henk.warrior = @wrapper
+    @fiber = Fiber.new { @henk.run }
+
+    @setup_finished = true
+  end
+
   def play_turn(warrior)
-    @henk ||= Henk.new
-    @henk.warrior = WarriorWrapper.new warrior
-    @fiber ||= Fiber.new do
-      @henk.run
-    end
+    setup
+    @wrapper.update warrior
     @fiber.resume
   end
 end
